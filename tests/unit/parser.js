@@ -6060,6 +6060,40 @@ exports.unreachable = {
       .test(src);
 
     test.done();
+  },
+  // Regression test for GH-2446
+  varAfterFunction: function (test) {
+    var src = [
+    "function main() {",
+    "  return 'Hello, World: ' + bar();",
+    "  function bar() {",
+    "    console.log(foo);",
+    "  }",
+    "  var foo = 'foo';",
+    "}",
+    "main();"];
+
+    TestRun(test)
+      .test(src);
+
+    test.done();
+  },
+  // Similiar to above 'varAfterFunction' but is not a warning
+  varInFunction: function (test) {
+    var src = [
+      "function main() {",
+      "  return 'Hello, World: ' + bar();",
+      "  function bar() {",
+      "    var foo = 'foo';",
+      "    console.log(foo);",
+      "  }",
+      "}",
+      "main();"];
+
+    TestRun(test)
+      .test(src);
+
+    test.done();
   }
 };
 
