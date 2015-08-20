@@ -3521,6 +3521,7 @@ var JSHINT = (function() {
         warning("E012", state.tokens.curr, state.tokens.curr.value);
       }
 
+      var uninitialisedVars = [];
       for (var t in tokens) {
         if (tokens.hasOwnProperty(t)) {
           t = tokens[t];
@@ -3532,8 +3533,10 @@ var JSHINT = (function() {
           if (t.id && !state.funct["(noblockscopedvar)"]) {
             state.funct["(scope)"].addlabel(t.id, {
               type: type,
+              initialised: false,
               token: t.token });
             names.push(t.token);
+            uninitialisedVars.push(t.id);
 
             if (lone && inexport) {
               state.funct["(scope)"].setExported(t.token.value, t.token);
@@ -3560,6 +3563,10 @@ var JSHINT = (function() {
           destructuringPatternMatch(names, value);
         }
       }
+
+      _.each(uninitialisedVars, function(id) {
+        state.funct["(scope)"].initialise(id);
+      });
 
       statement.first = statement.first.concat(names);
 

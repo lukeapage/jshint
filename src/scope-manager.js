@@ -587,11 +587,13 @@ var scopeManager = function(state, predefined, exported, declared) {
      * @param {Object} opts
      * @param {String} opts.type - the type of the label e.g. "param", "var", "let, "const", "function"
      * @param {Token} opts.token - the token pointing at the declaration
+     * @param {Boolean} opts.initialised
      */
     addlabel: function(labelName, opts) {
 
       var type  = opts.type;
       var token = opts.token;
+      var initialised = opts.token;
       var isblockscoped = type === "let" || type === "const" || type === "class";
 
       // outer shadow check (inner is only on non-block scoped)
