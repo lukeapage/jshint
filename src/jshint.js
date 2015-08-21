@@ -3482,6 +3482,10 @@ var JSHINT = (function() {
     });
   }
 
+  function exportToken(t) {
+    state.funct["(scope)"].setExported(t.token.value, t.token);
+  }
+
   function blockVariableStatement(type, statement, context) {
     // used for both let and const statements
 
@@ -3522,6 +3526,7 @@ var JSHINT = (function() {
       }
 
       var uninitialisedVars = [];
+      var needingExport = [];
       for (var t in tokens) {
         if (tokens.hasOwnProperty(t)) {
           t = tokens[t];
@@ -3531,15 +3536,16 @@ var JSHINT = (function() {
             }
           }
           if (t.id && !state.funct["(noblockscopedvar)"]) {
-            state.funct["(scope)"].addlabel(t.id, {
+            if (state.funct["(scope)"].addlabel(t.id, {
               type: type,
               initialised: false,
-              token: t.token });
+              token: t.token }) === false) {
+              uninitialisedVars.push(t);
+            }
             names.push(t.token);
-            uninitialisedVars.push(t.id);
 
             if (lone && inexport) {
-              state.funct["(scope)"].setExported(t.token.value, t.token);
+              needingExport.push(t);
             }
           }
         }
@@ -3564,9 +3570,9 @@ var JSHINT = (function() {
         }
       }
 
-      _.each(uninitialisedVars, function(id) {
-        state.funct["(scope)"].initialise(id);
-      });
+      _.each(uninitialisedVars, state.funct["(scope)"].labelInitialised);
+
+      _.each(needingExport, exportToken);
 
       statement.first = statement.first.concat(names);
 

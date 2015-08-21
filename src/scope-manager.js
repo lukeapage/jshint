@@ -581,6 +581,51 @@ var scopeManager = function(state, predefined, exported, declared) {
       this.block.use(labelName, token);
     },
 
+    labelInitialised: function(token) {
+      var labelName = token.id;
+      // if it has been used *in this function* then it is
+      // a. an error if it is block scoped
+      // b. a latedef warning if it is a variable
+
+      if (_current["(usages)"][labelName]) {
+        var usage = _current["(usages)"][labelName];
+        // if its in a sub function it is not necessarily an error, just latedef
+        if (!usage["(onlyUsedSubFunction)"]) {
+
+          // TODO: need to establish if the token was used between initialisation
+          //       and this function call, excluding ones used in the sub function.
+          //       E.g. it needs to differentiate
+          //
+          //   {
+          //      function b() { a = 1; }
+          //      let a = a; // warning
+          //   }
+          //
+          //   and
+          //
+          //   {
+          //      let a = function() { return a;};   //accepted
+          //   }
+          //
+          //
+          //   {
+          //      function b() { a = 1; } // accepted
+          //      let a = 1;
+          //   }
+          //
+          //   and
+          //
+          //    function(a) { var a = a; return a; }
+          //
+
+          // Could possibly achieve this by optionally doing latedef checks in addlabel if initialised is false and then
+          // doing them here instead (at the moment the code below kind-of works (with fixes) but duplicates warnings
+
+          warning("E056", token, labelName, "let");
+        }
+      }
+    },
+
     /**
      * adds an indentifier to the relevant current scope and creates warnings/errors as necessary
      * @param {string} labelName
@@ -593,7 +638,7 @@ var scopeManager = function(state, predefined, exported, declared) {
 
       var type  = opts.type;
       var token = opts.token;
-      var initialised = opts.token;
+      var initialised = opts.initialised;
       var isblockscoped = type === "let" || type === "const" || type === "class";
 
       // outer shadow check (inner is only on non-block scoped)
@@ -634,7 +679,11 @@ var scopeManager = function(state, predefined, exported, declared) {
           }
         }
 
-        scopeManagerInst.block.add(labelName, type, token, true);
+        scopeManagerInst.block.add(labelName, type, token, true, initialised);
+
+        // return if already declared in its own scope - can never be already declared as is block scoped
+        // (used to prevent let a = a;)
+        return false;
 
       } else {
 
@@ -661,11 +710,14 @@ var scopeManager = function(state, predefined, exported, declared) {
           }
         }
 
-        scopeManagerInst.funct.add(labelName, type, token, true);
+        scopeManagerInst.funct.add(labelName, type, token, true, initialised);
 
         if (_currentFunctBody["(type)"] === "global") {
           usedPredefinedAndGlobals[labelName] = marker;
         }
+
+        // return is declared in own scope (used to prevent var a = a;)
+        return declaredInCurrentFunctionScope;
       }
     },
 
@@ -726,12 +778,13 @@ var scopeManager = function(state, predefined, exported, declared) {
        * Adds a new function scoped variable
        * see block.add for block scoped
        */
-      add: function(labelName, type, tok, unused) {
+      add: function(labelName, type, tok, unused, initialised) {
         _current["(labels)"][labelName] = {
           "(type)" : type,
           "(token)": tok,
           "(blockscoped)": false,
           "(function)": _currentFunctBody,
+          "(initialised)": initialised, // todo prob. not needed
           "(unused)": unused };
       }
     },
@@ -787,11 +840,12 @@ var scopeManager = function(state, predefined, exported, declared) {
       /**
        * Adds a new variable
        */
-      add: function(labelName, type, tok, unused) {
+      add: function(labelName, type, tok, unused, initialised) {
         _current["(labels)"][labelName] = {
           "(type)" : type,
           "(token)": tok,
           "(blockscoped)": true,
+          "(initialised)": initialised, // todo prob. not needed
           "(unused)": unused };
       },
 
